@@ -20,10 +20,27 @@ under the License.
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"strconv"
+	"strings"
+)
+
+type Order struct {
+	id         int
+	itemsId    []string
+	customerId int
+	status     OrderStatus
+}
+type OrderStatus int
+
+const (
+	Issued OrderStatus = iota
+	Shipped
+	ArrivedToPO
+	Finished
 )
 
 // SimpleChaincode example simple Chaincode implementation
@@ -31,40 +48,44 @@ type SimpleChaincode struct {
 }
 
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-    if len(args) != 1 {
-        return nil, errors.New("Incorrect number of arguments. Expecting 1")
-    }
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 1")
+	}
 
-    err := stub.PutState("hello_world", []byte(args[0]))
-    if err != nil {
-        return nil, err
-    }
+	err := stub.PutState("hello_world", []byte(args[0]))
+	if err != nil {
+		return nil, err
+	}
 
-    return nil, nil
+	return nil, nil
 }
 
 func (t *SimpleChaincode) write(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-    var key, value string
-    var err error
-    fmt.Println("Running write")
+	var err error
+	fmt.Println("Running write")
 
-    if len(args) != 2 {
-        return nil, errors.New("Incorrect number of arguments. Expecting 2. name of the key and value to set")
-    }
+	if len(args) != 2 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 2. name of the key and value to set")
+	}
 
-    key = args[0]                            
-    value = args[1]
-    err = stub.PutState(key, []byte(value))  //write the variable into the chaincode state
-    if err != nil {
-        return nil, err
-    }
-    return nil, nil
+	id := args[0]
+	var order Order
+	order.id, err = strconv.Atoi(id)
+	order.itemsId = strings.Split(args[1], ",")
+	order.customerId, err = strconv.Atoi(args[2])
+	order.status = Issued
+	orderBytes, err := json.Marshal(order)
+	err = stub.PutState(id, orderBytes) //write the variable into the chaincode state
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
 }
 
 // Deletes an entity from state
 func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	fmt.Printf("Running delete")
-	
+
 	if len(args) != 1 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 3")
 	}
@@ -81,50 +102,50 @@ func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string
 }
 
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-    fmt.Println("invoke is running " + function)
+	fmt.Println("invoke is running " + function)
 
-    // Handle different functions
-    if function == "delete" {
-        return t.delete(stub, args)
-    } else if function == "write" {
-        return t.write(stub, args)
-    }
-    fmt.Println("invoke did not find func: " + function)
+	// Handle different functions
+	if function == "delete" {
+		return t.delete(stub, args)
+	} else if function == "write" {
+		return t.write(stub, args)
+	}
+	fmt.Println("invoke did not find func: " + function)
 
-    return nil, errors.New("Received unknown function invocation: " + function)
+	return nil, errors.New("Received unknown function invocation: " + function)
 }
 
 func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	fmt.Printf("Query called, determining function")
-	
+
 	if function != "query" {
 		fmt.Printf("Function is query")
 		return nil, errors.New("Invalid query function name. Expecting \"query\"")
 	}
-	var key string // Entities
+	var id string // Entities
 	var err error
 
 	if len(args) != 1 {
 		return nil, errors.New("Incorrect number of arguments. Expecting name of the person to query")
 	}
 
-	key = args[0]
+	id = args[0]
 
 	// Get the state from the ledger
-	value, err := stub.GetState(key)
+	order, err := stub.GetState(id)
 	if err != nil {
-		jsonResp := "{\"Error\":\"Failed to get state for " + key + "\"}"
+		jsonResp := "{\"Error\":\"Failed to get state for " + id + "\"}"
 		return nil, errors.New(jsonResp)
 	}
 
-	if value == nil {
-		jsonResp := "{\"Error\":\"Nil amount for " + key + "\"}"
+	if order == nil {
+		jsonResp := "{\"Error\":\"Nil amount for " + id + "\"}"
 		return nil, errors.New(jsonResp)
 	}
 
-	jsonResp := "{\"Name\":\"" + key + "\",\"Amount\":\"" + string(value) + "\"}"
+	jsonResp := "{\"Name\":\"" + id + "\",\"Order\":\"" + string(order) + "\"}"
 	fmt.Printf("Query Response:%s\n", jsonResp)
-	return value, nil
+	return order, nil
 }
 
 func main() {
