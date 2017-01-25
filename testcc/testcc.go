@@ -79,6 +79,37 @@ func (t *SimpleChaincode) SubmitOrder(stub shim.ChaincodeStubInterface, args []s
 	return nil, nil
 }
 
+func (t *SimpleChaincode) EditOrder(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	var err error
+	var order Order
+	fmt.Println("Changing order")
+
+	if len(args) != 2 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 2. name of the key and value to set")
+	}
+	id := args[0]
+	orderBytes, err := stub.GetState(id)
+	if err != nil {
+		jsonResp := "{\"Error\":\"Failed to get state for " + id + "\"}"
+		return nil, errors.New(jsonResp)
+	}
+
+	err = json.Unmarshal(orderBytes, &order)
+
+	order.ItemsId = strings.Split(args[1], ",")
+	orderBytes, err = json.Marshal(order)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	err = stub.PutState(id, orderBytes) //write the variable into the chaincode state
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return nil, nil
+}
+
 func (t *SimpleChaincode) ChangeStatus(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
 	var order Order
@@ -139,6 +170,8 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		return t.SubmitOrder(stub, args)
 	} else if function == "changestatus" {
 		return t.ChangeStatus(stub, args)
+	} else if function == "editorder" {
+		return t.EditOrder(stub, args)
 	}
 	fmt.Println("invoke did not find func: " + function)
 
