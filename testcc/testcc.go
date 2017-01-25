@@ -135,7 +135,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	// Handle different functions
 	if function == "cancelorder" {
 		return t.CancelOrder(stub, args)
-	} else if function == "SubmitOrder" {
+	} else if function == "submitorder" {
 		return t.SubmitOrder(stub, args)
 	} else if function == "changestatus" {
 		return t.ChangeStatus(stub, args)
