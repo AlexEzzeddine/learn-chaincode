@@ -31,18 +31,9 @@ import (
 type Order struct {
 	Id         int
 	ItemsId    []string
-	CustomerId int
+	CustomerId string
 	Status     string
 }
-
-//type OrderStatus int
-//
-//const (
-//	Issued OrderStatus = iota
-//	Shipped
-//	ArrivedToPO
-//	Finished
-//)
 
 // SimpleChaincode example simple Chaincode implementation
 type SimpleChaincode struct {
@@ -73,11 +64,11 @@ func (t *SimpleChaincode) write(stub shim.ChaincodeStubInterface, args []string)
 	var order Order
 	order.Id, err = strconv.Atoi(id)
 	order.ItemsId = strings.Split(args[1], ",")
-	order.CustomerId, err = strconv.Atoi(args[2])
+	order.CustomerId = args[2]
 	order.Status = "Issued"
 	orderBytes, err := json.Marshal(order)
 	if err != nil {
-		fmt.Println("privet")
+		fmt.Println(err)
 		return nil, err
 	}
 	err = stub.PutState(id, orderBytes) //write the variable into the chaincode state
@@ -152,7 +143,7 @@ func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
 	//	return nil, errors.New(jsonResp)
 	//}
 
-	jsonResp := "{\"Name\":\"" + id + "\",\"Customer Id\":\"" + strconv.Itoa(order.CustomerId) + "\"}"
+	jsonResp := "{\"Name\":\"" + id + "\",\"Customer Id\":\"" + order.CustomerId + "\"}"
 	fmt.Printf("Query Response:%s\n", jsonResp)
 	return orderBytes, nil
 }
