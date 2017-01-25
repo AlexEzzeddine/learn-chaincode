@@ -52,7 +52,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	return nil, nil
 }
 
-func (t *SimpleChaincode) write(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *SimpleChaincode) SubmitOrder(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
 	fmt.Println("Running write")
 
@@ -79,8 +79,39 @@ func (t *SimpleChaincode) write(stub shim.ChaincodeStubInterface, args []string)
 	return nil, nil
 }
 
+func (t *SimpleChaincode) ChangeStatus(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	var err error
+	var order Order
+	fmt.Println("Changing status")
+
+	if len(args) != 2 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 2. name of the key and value to set")
+	}
+	id := args[0]
+	orderBytes, err := stub.GetState(id)
+	if err != nil {
+		jsonResp := "{\"Error\":\"Failed to get state for " + id + "\"}"
+		return nil, errors.New(jsonResp)
+	}
+
+	err = json.Unmarshal(orderBytes, &order)
+
+	order.Status = args[1]
+	orderBytes, err := json.Marshal(order)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	err = stub.PutState(id, orderBytes) //write the variable into the chaincode state
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return nil, nil
+}
+
 // Deletes an entity from state
-func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *SimpleChaincode) CancelOrder(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	fmt.Printf("Running delete")
 
 	if len(args) != 1 {
@@ -100,12 +131,14 @@ func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string
 
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	fmt.Println("invoke is running " + function)
-
+	function = strings.ToLower(function)
 	// Handle different functions
-	if function == "delete" {
-		return t.delete(stub, args)
-	} else if function == "write" {
-		return t.write(stub, args)
+	if function == "cancelorder" {
+		return t.CancelOrder(stub, args)
+	} else if function == "SubmitOrder" {
+		return t.SubmitOrder(stub, args)
+	} else if function == "changestatus" {
+		return t.ChangeStatus(stub, args)
 	}
 	fmt.Println("invoke did not find func: " + function)
 
