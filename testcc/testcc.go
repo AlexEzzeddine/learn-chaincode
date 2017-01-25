@@ -97,7 +97,7 @@ func (t *SimpleChaincode) ChangeStatus(stub shim.ChaincodeStubInterface, args []
 	err = json.Unmarshal(orderBytes, &order)
 
 	order.Status = args[1]
-	orderBytes, err := json.Marshal(order)
+	orderBytes, err = json.Marshal(order)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
